@@ -1,0 +1,68 @@
+{
+    "id": "token-action-hud-traveller2e",
+    "title": "Token Action HUD for Mongoose Traveller2e",
+    "description": "Token Action HUD is a repositionable HUD of actions for a selected token",
+    "authors": [
+        {
+            "name": "WookieeChan"
+        }
+    ],
+    "url": "",
+    "flags": {},
+    "version": "0.1",
+    "compatibility": {
+        "minimum": "12",
+        "verified": "12"
+    },
+    "esmodules": [
+        "./scripts/init.js"
+    ],
+    "scripts": [],
+    "styles": [],
+    "languages": [
+        {
+            "lang": "en",
+            "name": "English",
+            "path": "languages/en.json"
+        }
+    ],
+    "packs": [],
+    "relationships": {
+        "systems": [
+            {
+                "id": "mgt2e",
+                "type": "system",
+                "compatibility": [
+                    {
+                        "minimum": "0.11.6",
+                        "verified": "1.0"
+                    }
+                ]
+            }
+        ],
+        "requires": [
+            {
+                "id": "token-action-hud-core",
+                "type": "module",
+                "compatibility": [
+                    {
+                        "minimum": "2.0.2",
+                        "maximum": "2",
+                        "verified": "2"
+                    }
+                ]
+            }
+        ],
+        "optional": [],
+        "flags": {
+            "optional": []
+        }
+    },
+    "socket": false,
+    "manifest": "",
+    "download": "",
+    "readme": "",
+    "protected": false,
+    "coreTranslation": false,
+    "library": false
+}
