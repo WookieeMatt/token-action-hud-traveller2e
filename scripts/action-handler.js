@@ -82,7 +82,7 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
 
 			// Get skills
 			const attributes = {
-				...(!this.actor ? game.symbaroum.config.attributes : this.actor.system.attributes),
+				...(!this.actor ? game.traveller2e.config.attributes : this.actor.system.attributes),
 			};
 			// Exit if there are no skills
 			if (attributes.length === 0) return;
@@ -92,9 +92,9 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
 				.map((attributes) => {
 					try {
 						const id = attributes[0];
-						const name = `${coreModule.api.Utils.i18n(game.symbaroum.config.attributeLabels[id])}` + ' ' + '-' + ' ' + this.actor.system.attributes[id].value;
+						const name = `${coreModule.api.Utils.i18n(game.traveller2e.config.attributeLabels[id])}` + ' ' + '-' + ' ' + this.actor.system.attributes[id].value;
 						const actionTypeName = `${coreModule.api.Utils.i18n(ACTION_TYPE[actionType])}: ` ?? '';
-						const listName = `${actionTypeName}${game.symbaroum.config.attributes[id]}`;
+						const listName = `${actionTypeName}${game.traveller2e.config.attributes[id]}`;
 						return {
 							id,
 							name,

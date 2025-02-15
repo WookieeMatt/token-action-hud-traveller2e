@@ -66,7 +66,7 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
 			// 				// case 'item':
 			// 				// 	{
 			// 				// 		const actorItem = actor.items.get(actionId);
-			// 				// 		if (actionId == game.symbaroum.config.noArmorID || actorItem.type == 'armor') {
+			// 				// 		if (actionId == game.traveller2e.config.noArmorID || actorItem.type == 'armor') {
 			// 				// 			return await this.#handleUArmorAction(event, actor, actionId, actorItem);
 			// 				// 		}
 			// 				// 		switch (actorItem.type) {

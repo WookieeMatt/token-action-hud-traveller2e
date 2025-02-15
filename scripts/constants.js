@@ -2,7 +2,7 @@
  * Module-based constants
  */
 export const MODULE = {
-	ID: 'token-action-hud-symbaroum',
+	ID: 'token-action-hud-traveller2e',
 };
 
 /**
