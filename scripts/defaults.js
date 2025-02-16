@@ -41,6 +41,14 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
                     { ...groups.carried, nestId: 'equipment_carried' },
                     { ...groups.owned, nestId: 'equipment_owned' }
                 ]
+            },
+            {
+                nestId: 'utility',
+                id: 'utility',
+                name: coreModule.api.Utils.i18n('tokenActionHud.traveller.utility'),
+                groups: [
+                    { ...groups.utility, nestId: 'utility_utility' }
+                ]
             }
         ],
         groups: groupsArray

@@ -41,7 +41,9 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
          */
         #buildCharacterActions() {
             this.buildAttributes()
+            this.buildAttacks()
             this.buildEquipment()
+            this.buildUtility()
         }
 
         async buildAttributes() {
@@ -74,7 +76,12 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
                 const skills = []
 
                 for (const [id, _] of Object.entries(this.actor.system.skills)) {
-                    const skillName = coreModule.api.Utils.i18n(`MGT2.Skills.${id}`)
+                    if (id === 'untrained' && coreModule.api.Utils.i18n(`MGT2.Skills.${id}`) === 'Untrained')
+                        continue
+
+                    let skillName = coreModule.api.Utils.i18n(`MGT2.Skills.${id}`)
+                    if (skillName === `MGT2.Skills.${id}`)
+                        skillName = id
 
                     // Add tooltip to skills
                     const tooltip = {
@@ -96,6 +103,33 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
             await buildSkills()
         }
 
+        async buildAttacks() {
+            const attacks = []
+
+            for (const [id, item] of this.items.entries()) {
+                const status = item.system.status
+                const type = item.type
+                if (status !== 'equipped' || type !== 'weapon') {
+                    continue
+                }
+
+                const tooltip = {
+                    content: '' + item.name + '',
+                    direction: 'LEFT'
+                }
+
+                attacks.push({
+                    name: item.name,
+                    id,
+                    img: item.img,
+                    tooltip,
+                    encodedValue: ['attacks', id].join(this.delimiter)
+                })
+            }
+
+            await this.addActions(attacks.sort((a, b) => a.name.localeCompare(b.name)), { id: 'attacks', type: 'system' })
+        }
+
         async buildEquipment() {
             const buildInUse = async () => {
                 const items = []
@@ -106,6 +140,7 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
                         continue
                     }
 
+                    // Add tooltip to items in use
                     const tooltip = {
                         content: '' + item.name + '',
                         direction: 'LEFT'
@@ -132,6 +167,7 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
                         continue
                     }
 
+                    // Add tooltip to carried items
                     const tooltip = {
                         content: '' + item.name + '',
                         direction: 'LEFT'
@@ -158,6 +194,7 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
                         continue
                     }
 
+                    // Add tooltip to owned items
                     const tooltip = {
                         content: '' + item.name + '',
                         direction: 'LEFT'
@@ -178,6 +215,22 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
             await buildInUse()
             await buildCarried()
             await buildOwned()
+        }
+
+        async buildUtility() {
+            const utilities = [
+                {
+                    name: coreModule.api.Utils.i18n('tokenActionHud.traveller.initiative'),
+                    id: 'initiative',
+                    tooltip: {
+                        content: '' + coreModule.api.Utils.i18n('tokenActionHud.traveller.initiative') + '',
+                        direction: 'LEFT'
+                    },
+                    encodedValue: ['utility', 'initiative'].join(this.delimiter)
+                }
+            ]
+
+            await this.addActions(utilities, { id: 'utility', type: 'system' })
         }
 
         /**

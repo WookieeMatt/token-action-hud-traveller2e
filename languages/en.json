@@ -9,13 +9,14 @@
 				"name": "Display Inactive"
 			}
 		},
-		"traveller":{
+		"traveller": {
 			"attributes": "Attributes",
 			"characteristics": "Characteristics",
 			"inUse": "In Use",
 			"carried": "Carried",
 			"owned": "Owned",
-			"utility": "Utility"
+			"utility": "Utility",
+			"initiative": "Initiative"
 		}
 	}
 }

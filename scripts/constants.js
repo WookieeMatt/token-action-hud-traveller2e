@@ -38,5 +38,6 @@ export const GROUP = {
     equipment: { id: 'equipment', name: 'MGT2.TravellerSheet.Equipment', type: 'system' },
     inUse: { id: 'inUse', name: 'tokenActionHud.traveller.inUse', type: 'system' },
     carried: { id: 'carried', name: 'tokenActionHud.traveller.carried', type: 'system' },
-    owned: { id: 'owned', name: 'tokenActionHud.traveller.owned', type: 'system' }
+    owned: { id: 'owned', name: 'tokenActionHud.traveller.owned', type: 'system' },
+    utility: { id: 'utility', name: 'tokenActionHud.traveller.utility', type: 'system' }
 }
