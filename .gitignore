@@ -1,3 +1,7 @@
+node_modules
+package-lock.json
+scripts/token-action-hud-t2e.min.js
+scripts/token-action-hud-t2e.min.js.map
 .vscode
 .eslintrc.json
 token-action-hud-traveller2e.lock

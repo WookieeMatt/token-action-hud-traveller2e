@@ -1,0 +1,20 @@
+{
+  "license": "CC-BY-4.0",
+  "type": "module",
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -wcm"
+  },
+  "dependencies": {
+    "@rollup/plugin-terser": "^0.4.4"
+  },
+  "devDependencies": {
+    "@rollup/plugin-multi-entry": "^6.0.1",
+    "eslint": "^8.57.1",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-n": "^16.6.2",
+    "eslint-plugin-promise": "^6.6.0",
+    "rollup": "^4.24.0"
+  }
+}

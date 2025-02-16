@@ -5,6 +5,12 @@
     "authors": [
         {
             "name": "WookieeChan"
+        },
+        {
+            "name": "Tárcis",
+            "email": "tarcismoreda@gmail.com",
+            "discord": "tarcis_moreda",
+            "flags": {}
         }
     ],
     "url": "",
@@ -15,7 +21,7 @@
         "verified": "12"
     },
     "esmodules": [
-        "./scripts/init.js"
+        "./scripts/token-action-hud-t2e.min.js"
     ],
     "scripts": [],
     "styles": [],
