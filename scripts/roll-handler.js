@@ -12,14 +12,14 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
          * @param {object} event        The event
          * @param {string} encodedValue The encoded value
          */
-        async handleActionClick (event, encodedValue) {
+        async handleActionClick(event, encodedValue) {
             const [actionTypeId, actionId] = encodedValue.split('|')
 
-            const knownCharacters = ['agent']
+            const knownCharacters = ['traveller']
 
             // If single actor is selected
             if (this.actor) {
-                await this.#handleAction(this.actor, actionTypeId, actionId)
+                await this.#handleAction(event, this.actor, actionTypeId, actionId)
                 return
             }
 
@@ -29,7 +29,7 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
             // If multiple actors are selected
             for (const token of controlledTokens) {
                 const actor = token.actor
-                await this.#handleAction(actor, actionTypeId, actionId)
+                await this.#handleAction(event, actor, actionTypeId, actionId)
             }
         }
 
@@ -40,7 +40,7 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
          * @param {object} event        The event
          * @param {string} encodedValue The encoded value
          */
-        async handleActionHover (event, encodedValue) { }
+        async handleActionHover(event, encodedValue) { }
 
         /**
          * Handle group click
@@ -49,7 +49,7 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
          * @param {object} event The event
          * @param {object} group The group
          */
-        async handleGroupClick (event, group) { }
+        async handleGroupClick(event, group) { }
 
         /**
          * Handle action
@@ -59,102 +59,108 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
          * @param {string} actionTypeId The action type id
          * @param {string} actionId     The actionId
          */
-        async #handleAction (actor, actionTypeId, actionId) {
+        async #handleAction(event, actor, actionTypeId, actionId) {
             switch (actionTypeId) {
-                case 'attributes':
-                    await this.#handleAttributessAction(actor, actionId)
+                case 'characteristics':
+                    await this.#handleCharacteristicsAction(event, actor, actionId);
                     break
                 case 'skills':
-                    await this.#handleSkillsAction(actor, actionId)
+                    await this.#handleSkillsAction(event, actor, actionId)
+                    break
+                case 'attacks':
+                    this.#handleAttacksAction(actor, actionId)
+                    break
+                case 'inUse':
+                case 'carried':
+                case 'owned':
+                    await this.#handleEquipmentsAction(event, actor, actionId)
+                    break
+                case 'utility':
+                    await this.#handleUtilityAction(event, actor, actionId)
                     break
                 default:
-                    await this.#handleItemsAction(actor, actionId)
                     break
             }
         }
 
-        /**
-         * Handle Attribute action
-         * @private
-         * @param {object} actor    The actor
-         * @param {string} actionId The action id
-         */
-        async #handleAttributessAction (actor, actionId) {
-            let rollMod = 0
-            try {
-                rollMod = await foundry.applications.api.DialogV2.prompt({
-                    window: { title: coreModule.api.Utils.i18n('tokenActionHud.op.addBonus') },
-                    content: '<input name="mod" type="number" value="0" min="-5" max="5" step="1" autofocus>',
-                    ok: {
-                        label: coreModule.api.Utils.i18n('tokenActionHud.op.roll'),
-                        callback: (_event, button, _dialog) => button.form.elements.mod.valueAsNumber
+        async #handleCharacteristicsAction(event, actor, actionId) {
+            const mockEvent = {
+                shiftKey: event.shiftKey,
+                ctrlKey: event.ctrlKey,
+                currentTarget: {
+                    dataset: {
+                        cha: actionId,
+                        label: actionId,
+                        roll: `2D6+@${actionId}`,
                     }
-                })
-            } catch {
-                rollMod = 0
+                },
+                preventDefault: () => { }
             }
 
-            const attribute = actor.system.attributes[actionId]
-            const attributeName = coreModule.api.Utils.i18n(`op.att${actionId.replace(/^./, actionId[0].toUpperCase())}`)
-            let formula = `${attribute.value === 0 ? 2 : attribute.value}d20${attribute.value === 0 ? 'kl' : 'kh'}`
-            if (rollMod > 0) {
-                if (attribute.value === 0) {
-                    rollMod -= 1
-                    formula = `${rollMod}d20kh`
-                } else {
-                    const newMod = Number(formula.charAt(0)) + rollMod
-                    formula = `${newMod}${formula.slice(1)}`
-                }
-            } else if (rollMod < 0) {
-                if (attribute.value === 0) {
-                    const newMod = Number(formula.charAt(0)) - rollMod
-                    formula = `${newMod}${formula.slice(1)}`
-                } else {
-                    const currentMod = Number(formula.charAt(0))
-                    rollMod = -rollMod
-                    if (currentMod === 1) {
-                        rollMod += 1
-                    } else {
-                        rollMod -= currentMod - 1
-                    }
-                    formula = `${rollMod}d20kl`
-                }
-            }
-
-            await new Roll(formula).toMessage({
-                speaker: ChatMessage.getSpeaker(),
-                flavor: `${coreModule.api.Utils.i18n('tokenActionHud.op.rolling')} ${attributeName}`
-            })
+            actor.sheet._onRollWrapper(mockEvent, actor)
         }
 
-        /**
-         * Handle Skill action
-         * @private
-         * @param {object} actor    The actor
-         * @param {string} actionId The action id
-         */
-        async #handleSkillsAction(actor, actionId) {
-            if (actionId === 'initiative' && actor.inCombat) {
-                await actor.rollInitiative()
-                return
+        async #handleSkillsAction(event, actor, actionId) {
+            const skill = actor.system.skills[actionId]
+            const label = `${skill.default} ${skill.trained ? '+' : '-'} '${skill.trained ? skill.value : -3}`
+
+            const mockEvent = {
+                shiftKey: event.shiftKey,
+                ctrlKey: event.ctrlKey,
+                currentTarget: {
+                    dataset: {
+                        label,
+                        skill: actionId,
+                        roll: '2D6',
+                        rollType: 'skill'
+                    }
+                },
+                preventDefault: () => { }
             }
 
-            const rollData = actor.system.skills[actionId]
-            await new Roll(rollData.formula).toMessage({
-                speaker: ChatMessage.getSpeaker(),
-                flavor: `${coreModule.api.Utils.i18n('tokenActionHud.op.rolling')} ${rollData.label}`
-            })
+            actor.sheet._onRollWrapper(mockEvent, actor)
         }
 
-        /**
-         * Handle Item action
-         * @private
-         * @param {object} actor    The actor
-         * @param {string} actionId The action id
-         */
-        async #handleItemsAction(actor, actionId) {
+        async #handleAttacksAction(actor, actionId) {
             const item = actor.items.get(actionId)
-            item.roll()
+            await item.roll()
+        }
+
+        async #handleEquipmentsAction(event, actor, actionId) {
+            const item = actor.items.get(actionId)
+            let status = undefined
+
+            switch (item.system.status) {
+                case 'equipped':
+                    if (event.button === 2)
+                        status = 'carried'
+                    break
+                case 'carried':
+                    if (event.button === 0)
+                        status = 'equipped'
+                    else
+                        status = 'owned'
+                    break
+                case 'owned':
+                    if (event.button === 0)
+                        status = 'carried'
+                    break
+                default:
+                    break
+            }
+
+            if (status)
+                actor.sheet._setItemStatus(actor, item, status)
+        }
+
+        async #handleUtilityAction(_event, actor, actionId) {
+            switch (actionId) {
+                case 'initiative':
+                    await actor.rollInitiative()
+                    break
+                default:
+                    break
+            }
         }
     }
 })

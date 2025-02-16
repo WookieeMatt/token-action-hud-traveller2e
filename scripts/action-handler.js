@@ -217,7 +217,7 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
             await buildOwned()
         }
 
-        async buildUtility() {
+        async buildUtility () {
             const utilities = [
                 {
                     name: coreModule.api.Utils.i18n('tokenActionHud.traveller.initiative'),
