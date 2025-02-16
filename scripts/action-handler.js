@@ -1,527 +1,191 @@
 // System Module Imports
-import { ACTION_TYPE, ITEM_TYPE, CONDITION } from './constants.js';
-import { Utils } from './utils.js';
+import { Utils } from './utils.js'
 
-export let ActionHandler = null;
+export let ActionHandler = null
 
 Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
-	/**
-	 * Extends Token Action HUD Core's ActionHandler class and builds system-defined actions for the HUD
-	 */
-	ActionHandler = class ActionHandler extends coreModule.api.ActionHandler {
-		// Initialize actor and token variables
-		actors = null;
-		tokens = null;
-		actorType = null;
-
-		// Initialize items variable
-		items = null;
-
-		// Initialize setting variables
-		showUnequippedItems = null;
-		showtooltip = null;
-
-		/**
-		 * Build system actions
-		 * Called by Token Action HUD Core
-		 * @override
-		 * @param {array} groupIds
-		 */
-		async buildSystemActions(groupIds) {
-			// Set actor and token variables
-			this.actors = !this.actor ? this.#getActors() : [this.actor];
-			this.tokens = !this.token ? this.#getTokens() : [this.token];
-			this.actorType = this.actor?.type;
-
-			// Settings
-			this.displayUnequipped = Utils.getSetting('displayUnequipped');
-			this.showtooltip = Utils.getSetting('showtooltip');
-
-			// Set items variable
-			if (this.actor) {
-				let items = this.actor.items;
-				items = coreModule.api.Utils.sortItemsByName(items);
-				this.items = items;
-			}
-
-			switch (this.actorType) {
-				case 'player':
-				case 'monster':
-					{
-						await this.#buildPlayerActions();
-					}
-					break;
-				default:
-					{
-						await this.#buildMultipleTokenActions();
-					}
-					break;
-			}
-		}
-
-		/**
-		 * Build player actions
-		 * @private
-		 */
-		async #buildPlayerActions() {
-			await Promise.all([
-				this.#buildAttributes(),
-				this.#buildTraits(),
-				this.#buildAbilities(),
-				this.#buildMysticalPowers(),
-				this.#buildInventory(),
-				this.#buildToughness(),
-				this.#buildTempCorruption(),
-			]);
-		}
-
-		async #buildMultipleTokenActions() {}
-
-		async #buildAttributes() {
-			const actionType = 'attributes';
-
-			// Get skills
-			const attributes = {
-				...(!this.actor ? game.traveller2e.config.attributes : this.actor.system.attributes),
-			};
-			// Exit if there are no skills
-			if (attributes.length === 0) return;
-
-			// Get actions
-			const actions = Object.entries(attributes)
-				.map((attributes) => {
-					try {
-						const id = attributes[0];
-						const name = `${coreModule.api.Utils.i18n(game.traveller2e.config.attributeLabels[id])}` + ' ' + '-' + ' ' + this.actor.system.attributes[id].value;
-						const actionTypeName = `${coreModule.api.Utils.i18n(ACTION_TYPE[actionType])}: ` ?? '';
-						const listName = `${actionTypeName}${game.traveller2e.config.attributes[id]}`;
-						return {
-							id,
-							name,
-							listName,
-							onClick: async () => {
-								this.actor.rollAttribute(id);
-							},
-						};
-					} catch (error) {
-						coreModule.api.Logger.error(attributes);
-						return null;
-					}
-				})
-				.filter((attributes) => !!attributes);
-
-			// Create group data
-			const groupData = { id: 'attributes', type: 'system' };
-
-			// Add actions to HUD
-			this.addActions(actions, groupData);
-		}
-
-		async #buildInventory() {
-			const armorActions = [];
-			const invItems = this.actor.items.filter((item) => item.system.isGear || (item.system.isEquipement && !item.system.isArmor));
-
-			if (invItems.size === 0) {
-				return;
-			}
-
-			const actionTypeId = 'item';
-			const inventoryMap = new Map();
-
-			for (const itemData of invItems) {
-				let type = itemData.type;
-				const itemId = itemData.id;
-
-				if (
-					((type === 'weapon' || type === 'equipment') && itemData.system?.isActive) ||
-					((type === 'weapon' || type === 'equipment') && this.displayUnequipped)
-				) {
-					// For now - ignore this and add them separately once we have support for selecting the power to use
-					/*
-					if (itemData.system?.isArtifact || itemData.system?.isArtifact === "artifact") {
-						type = "artifact";
-					}
-					*/
-					const typeMap = inventoryMap.get(type) ?? new Map();
-					typeMap.set(itemId, itemData);
-					inventoryMap.set(type, typeMap);
-				}
-
-				for (const [type, typeMap] of inventoryMap) {
-					let groupId = ITEM_TYPE[type]?.groupId;
-
-					if (!groupId) continue;
-
-					const groupData = { id: groupId, type: 'system' };
-
-					// Get actions
-					let actions = [...typeMap].map(([itemId, itemData]) => {
-						// let name = "";
-						const id = itemId;
-						const actorItem = this.actor.items.get(id);
-
-						let img = coreModule.api.Utils.getImage(itemData);
-						let name = itemData.name;
-						const actionTypeName = coreModule.api.Utils.i18n(ACTION_TYPE[actionTypeId]);
-						let listName = `${actionTypeName ? `${actionTypeName}: ` : ''}${name}`;
-
-						return {
-							id,
-							name,
-							img,
-							listName,
-							onClick: async () => {
-								switch (actorItem.type) {
-									case 'weapon':
-										const usedItem = this.actor.system.weapons.filter((item) => item.id === id);
-										this.actor.rollWeapon(usedItem[0]);
-										break;
-									default:
-										await actorItem.sheet.render(true);
-										break;
-								}
-							},
-						};
-					});
-
-					// TAH Core method to add actions to the action list
-					this.addActions(actions, groupData);
-				}
-			}
-			//
-			// Now Add any Armor or the No Armor badge
-			//
-			const type = 'armor';
-			const groupId = ITEM_TYPE[type]?.groupId;
-			const armorGroupData = { id: groupId, type: 'system' };
-			const actionTypeName = coreModule.api.Utils.i18n(ACTION_TYPE[actionTypeId]);
-			armorActions.push({
-				id: this.actor.system.combat.id,
-				name: this.actor.system.combat.name,
-				img: this.actor.system.combat.img,
-				listName: `${actionTypeName ? `${actionTypeName}: ` : ''}${this.actor.system.combat.name}`,
-				onClick: async () => {
-					await this.actor.rollArmor();
-				},
-			});
-
-			// TAH Core method to add actions to the action list
-			this.addActions(armorActions, armorGroupData);
-		}
-
-		async #buildTraits() {
-			const actionType = 'trait';
-			// Get traits
-			const traits = this.actor.items.filter((item) => item.type === 'trait' && item.system?.hasScript);
-			// Exit if there are no traits with scripts
-
-			if (traits.length === 0) {
-				// Remove group Trait if there are not traits
-				return;
-			}
-
-			// Get actions
-			const actions = traits.map((trait) => {
-				try {
-					const id = trait.id;
-					let name = trait.name;
-
-					const actionTypeName = `${coreModule.api.Utils.i18n(ACTION_TYPE[actionType])}: ` ?? '';
-					const listName = `${actionTypeName}${name}`;
-					const img = coreModule.api.Utils.getImage(trait.img);
-
-					return {
-						id,
-						name,
-						img,
-						listName,
-						onClick: async () => {
-							this.actor.usePower(trait);
-						},
-					};
-				} catch (error) {
-					coreModule.api.Logger.error(trait);
-					return null;
-				}
-			});
-
-			// Create group data
-			const groupData = { id: 'traits', type: 'system' };
-
-			// Add actions to HUD
-			this.addActions(actions, groupData);
-		}
-
-		async #buildAbilities() {
-			const actionType = 'ability';
-			// Get traits
-			const abilities = this.actor.items.filter((item) => item.type === 'ability' && item.system?.script);
-
-			// Exit if there are no abilities with scripts
-			if (abilities.length === 0) {
-				return;
-			}
-
-			// Get actions
-			const actions = abilities.map((ability) => {
-				try {
-					const id = ability.id;
-					let name = ability.name;
-					const actionTypeName = `${coreModule.api.Utils.i18n(ACTION_TYPE[actionType])}: ` ?? '';
-					const listName = `${actionTypeName}${name}`;
-					const img = coreModule.api.Utils.getImage(ability.img);
-					return {
-						id,
-						name,
-						img,
-						listName,
-						onClick: async () => {
-							this.actor.usePower(ability);
-						},
-					};
-				} catch (error) {
-					coreModule.api.Logger.error(ability);
-					return null;
-				}
-			});
-
-			// Create group data
-			const groupData = { id: 'abilities', type: 'system' };
-
-			// Add actions to HUD
-			this.addActions(actions, groupData);
-		}
-
-		async #buildMysticalPowers() {
-			const actionType = 'mysticalpower';
-			// Get traits
-			let powers = this.actor.items.filter((item) => item.type === 'mysticalPower' && item.system?.hasScript);
-			// Exit if there are no abilities with scripts
-			if (powers.length === 0) {
-				return;
-			}
-
-			// Get actions
-			const actions = powers.map((power) => {
-				try {
-					const id = power.id;
-					const name = power.name;
-					const actionTypeName = `${coreModule.api.Utils.i18n(ACTION_TYPE[actionType])}: ` ?? '';
-					const listName = `${actionTypeName}${power.name}`;
-					const img = coreModule.api.Utils.getImage(power.img);
-					return {
-						id,
-						name,
-						img,
-						listName,
-						onClick: async () => {
-							this.actor.usePower(power);
-						},
-					};
-				} catch (error) {
-					coreModule.api.Logger.error(power);
-					return null;
-				}
-			});
-
-			// Create group data
-			const groupData = { id: 'mysticalpower', type: 'system' };
-
-			// Add actions to HUD
-			this.addActions(actions, groupData);
-		}
-
-		async #buildToughness() {
-			const actionTypeId = 'toughness';
-			const groupData = { id: 'utility', type: 'system' };
-			let tValue = this.actor.system?.health.toughness.value;
-			const max = this.actor.system?.health.toughness.max;
-
-			// Get actions
-			const id = actionTypeId;
-			const name = coreModule.api.Utils.i18n('HEALTH.TOUGHNESS') + ' - ' + (max > 0 ? `${tValue ?? 0}/${max}` : '');
-			const actionTypeName = coreModule.api.Utils.i18n(ACTION_TYPE[actionTypeId]);
-			const listName = `${actionTypeName ? `${actionTypeName}: ` : ''}${name}`;
-			const tooltip = coreModule.api.Utils.i18n('tokenActionHud.TOOLTIP.ADDREMOVE');
-			const actions = [
-				{
-					id,
-					name,
-					listName,
-					tooltip,
-					onClick: async () => {
-						if (this.isRightClick) {
-							if (tValue <= 0) return;
-							tValue--;
-						} else {
-							if (tValue >= max) return;
-							tValue++;
-						}
-
-						let update = { system: { health: { toughness: { value: tValue } } } };
-
-						await this.actor.update(update);
-					},
-				},
-			];
-			// TAH Core method to add actions to the action list
-			this.addActions(actions, groupData);
-		}
-
-		async #buildTempCorruption() {
-			const actionTypeId = 'corruption';
-			let name = '';
-			const groupData = { id: 'utility', type: 'system' };
-			let cValue = this.actor.system?.health.corruption.temporary;
-			const max = this.actor.system?.health.corruption.max - this.actor.system?.health.corruption.permanent;
-
-			// Get actions
-			const id = actionTypeId;
-			if (max === 0) {
-				name = coreModule.api.Utils.i18n('HEALTH.CORRUPTION_THROUGHLY').capitalize();
-			} else {
-				name =
-					coreModule.api.Utils.i18n('HEALTH.CORRUPTION_TEMPORARY') +
-					' ' +
-					coreModule.api.Utils.i18n('HEALTH.CORRUPTION') +
-					' - ' +
-					(max > 0 ? `${cValue ?? 0}/${max}` : '');
-			}
-
-			const actionTypeName = coreModule.api.Utils.i18n(ACTION_TYPE[actionTypeId]);
-			const listName = `${actionTypeName ? `${actionTypeName}: ` : ''}${name}`;
-			const tooltip = coreModule.api.Utils.i18n('tokenActionHud.TOOLTIP.ADDREMOVE');
-			const actions = [
-				{
-					id,
-					name,
-					listName,
-					tooltip,
-					onClick: async () => {
-						if (this.isRightClick) {
-							if (cValue <= 0) return;
-							cValue--;
-						} else {
-							if (cValue >= max) return;
-							cValue++;
-						}
-
-						let update = { system: { health: { corruption: { temporary: cValue } } } };
-
-						await this.actor.update(update);
-					},
-				},
-			];
-			// TAH Core method to add actions to the action list
-			this.addActions(actions, groupData);
-		}
-
-		/**
-		 * Get actors
-		 * @private
-		 * @returns {object}
-		 */
-		async #getActors() {
-			const allowedTypes = ['player', 'monster'];
-			const actors = canvas.tokens.controlled.filter((token) => token.actor).map((token) => token.actor);
-			if (actors.every((actor) => allowedTypes.includes(actor.type))) {
-				return actors;
-			} else {
-				return [];
-			}
-		}
-
-		/**
-		 * Get tokens
-		 * @private
-		 * @returns {object}
-		 */
-		async #getTokens() {
-			const allowedTypes = ['player', 'monster'];
-			const tokens = canvas.tokens.controlled;
-			const actors = tokens.filter((token) => token.actor).map((token) => token.actor);
-			if (actors.every((actor) => allowedTypes.includes(actor.type))) {
-				return tokens;
-			} else {
-				return [];
-			}
-		}
-
-		/**
-		 * Get condition tooltip data
-		 * @param {*} id     The condition id
-		 * @param {*} name   The condition name
-		 * @returns {object} The tooltip data
-		 */
-		async #getConditionTooltipData(id, name) {
-			if (this.showtooltip === false) return '';
-			const description = CONDITION[id] ? CONDITION[id]?.description : null;
-			return {
-				name,
-				description,
-			};
-		}
-		/**
-		 * Get tooltip
-		 * @param {object} tooltipData The tooltip data
-		 * @returns {string}           The tooltip
-		 */
-		async #getTooltip(tooltipData) {
-			if (this.showtooltip === false) return '';
-			// if (typeof tooltipData === 'string') return tooltipData;
-
-			const name = coreModule.api.Utils.i18n(tooltipData.name);
-
-			// if (this.tooltipsSetting === 'nameOnly') return name;
-
-			const nameHtml = `<h3>${name}</h3>`;
-
-			const description =
-				tooltipData?.descriptionLocalised ?? (await TextEditor.enrichHTML(coreModule.api.Utils.i18n(tooltipData?.description ?? ''), { async: false }));
-
-			const rarityHtml = tooltipData?.rarity
-				? `<span class="tah-tag ${tooltipData.rarity}">${coreModule.api.Utils.i18n(RARITY[tooltipData.rarity])}</span>`
-				: '';
-
-			const propertiesHtml = tooltipData?.properties
-				? `<div class="tah-properties">${tooltipData.properties
-						.map((property) => `<span class="tah-property">${coreModule.api.Utils.i18n(property)}</span>`)
-						.join('')}</div>`
-				: '';
-
-			const traitsHtml = tooltipData?.traits
-				? tooltipData.traits.map((trait) => `<span class="tah-tag">${coreModule.api.Utils.i18n(trait.label ?? trait)}</span>`).join('')
-				: '';
-
-			const traits2Html = tooltipData?.traits2
-				? tooltipData.traits2.map((trait) => `<span class="tah-tag tah-tag-secondary">${coreModule.api.Utils.i18n(trait.label ?? trait)}</span>`).join('')
-				: '';
-
-			const traitsAltHtml = tooltipData?.traitsAlt
-				? tooltipData.traitsAlt.map((trait) => `<span class="tah-tag tah-tag-alt">${coreModule.api.Utils.i18n(trait.label)}</span>`).join('')
-				: '';
-
-			const modifiersHtml = tooltipData?.modifiers
-				? `<div class="tah-tags">${tooltipData.modifiers
-						.filter((modifier) => modifier.enabled)
-						.map((modifier) => {
-							const label = coreModule.api.Utils.i18n(modifier.label);
-							const sign = modifier.modifier >= 0 ? '+' : '';
-							const mod = `${sign}${modifier.modifier ?? ''}`;
-							return `<span class="tah-tag tah-tag-transparent">${label} ${mod}</span>`;
-						})
-						.join('')}</div>`
-				: '';
-
-			const tagsJoined = [rarityHtml, traitsHtml, traits2Html, traitsAltHtml].join('');
-
-			const tagsHtml = tagsJoined ? `<div class="tah-tags">${tagsJoined}</div>` : '';
-
-			const headerTags = tagsHtml || modifiersHtml ? `<div class="tah-tags-wrapper">${tagsHtml}${modifiersHtml}</div>` : '';
-
-			if (!description && !tagsHtml && !modifiersHtml) return name;
-
-			return `<div>${nameHtml}${headerTags}${description}${propertiesHtml}</div>`;
-		}
-	};
-});
+    /**
+     * Extends Token Action HUD Core's ActionHandler class and builds system-defined actions for the HUD
+     */
+    ActionHandler = class ActionHandler extends coreModule.api.ActionHandler {
+        /**
+         * Build system actions
+         * Called by Token Action HUD Core
+         * @override
+         * @param {array} groupIds
+         */
+        async buildSystemActions(groupIds) {
+            // Set actor and token variables
+            this.actors = (!this.actor) ? this._getActors() : [this.actor]
+            this.actorType = this.actor?.type
+
+            this.displayUnequipped = Utils.getSetting('displayUnequipped')
+
+            // Set items variable
+            if (this.actor) {
+                let items = this.actor.items
+                items = coreModule.api.Utils.sortItemsByName(items)
+                this.items = items
+            }
+
+            if (this.actorType === 'traveller') {
+                this.#buildCharacterActions()
+            } else if (!this.actor) {
+                this.#buildMultipleTokenActions()
+            }
+        }
+
+        /**
+         * Build character actions
+         * @private
+         */
+        #buildCharacterActions() {
+            this.buildAttributes()
+            this.buildEquipment()
+        }
+
+        async buildAttributes() {
+            const buildCharacteristics = async () => {
+                const characteristics = []
+
+                for (const [id, characteristic] of Object.entries(this.actor.system.characteristics)) {
+                    if (!characteristic.show)
+                        continue
+
+                    const characteristicName = coreModule.api.Utils.i18n(`MGT2.Characteristics.${id}`)
+
+                    // Add tooltip to characteristics
+                    const tooltip = {
+                        content: '' + characteristic.dm + '',
+                        direction: 'LEFT'
+                    }
+                    characteristics.push({
+                        name: characteristicName,
+                        id,
+                        tooltip,
+                        encodedValue: ['characteristics', id].join(this.delimiter)
+                    })
+                }
+
+                await this.addActions(characteristics, { id: 'characteristics', type: 'system' })
+            }
+
+            const buildSkills = async () => {
+                const skills = []
+
+                for (const [id, _] of Object.entries(this.actor.system.skills)) {
+                    const skillName = coreModule.api.Utils.i18n(`MGT2.Skills.${id}`)
+
+                    // Add tooltip to skills
+                    const tooltip = {
+                        content: '' + skillName + '',
+                        direction: 'LEFT'
+                    }
+                    skills.push({
+                        name: skillName,
+                        id,
+                        tooltip,
+                        encodedValue: ['skills', id].join(this.delimiter)
+                    })
+                }
+
+                await this.addActions(skills, { id: 'skills', type: 'system' })
+            }
+
+            await buildCharacteristics()
+            await buildSkills()
+        }
+
+        async buildEquipment() {
+            const buildInUse = async () => {
+                const items = []
+
+                for (const [id, item] of this.items.entries()) {
+                    const status = item.system.status
+                    if (status !== 'equipped') {
+                        continue
+                    }
+
+                    const tooltip = {
+                        content: '' + item.name + '',
+                        direction: 'LEFT'
+                    }
+
+                    items.push({
+                        name: item.name,
+                        id,
+                        img: item.img,
+                        tooltip,
+                        encodedValue: ['inUse', id].join(this.delimiter)
+                    })
+                }
+
+                await this.addActions(items.sort((a, b) => a.name.localeCompare(b.name)), { id: 'inUse', type: 'system' })
+            }
+
+            const buildCarried = async () => {
+                const items = []
+
+                for (const [id, item] of this.items.entries()) {
+                    const status = item.system.status
+                    if (status !== 'carried') {
+                        continue
+                    }
+
+                    const tooltip = {
+                        content: '' + item.name + '',
+                        direction: 'LEFT'
+                    }
+
+                    items.push({
+                        name: item.name,
+                        id,
+                        img: item.img,
+                        tooltip,
+                        encodedValue: ['carried', id].join(this.delimiter)
+                    })
+                }
+
+                await this.addActions(items.sort((a, b) => a.name.localeCompare(b.name)), { id: 'carried', type: 'system' })
+            }
+
+            const buildOwned = async () => {
+                const items = []
+
+                for (const [id, item] of this.items.entries()) {
+                    const status = item.system.status
+                    if (status !== 'owned') {
+                        continue
+                    }
+
+                    const tooltip = {
+                        content: '' + item.name + '',
+                        direction: 'LEFT'
+                    }
+
+                    items.push({
+                        name: item.name,
+                        id,
+                        img: item.img,
+                        tooltip,
+                        encodedValue: ['owned', id].join(this.delimiter)
+                    })
+                }
+
+                await this.addActions(items.sort((a, b) => a.name.localeCompare(b.name)), { id: 'owned', type: 'system' })
+            }
+
+            await buildInUse()
+            await buildCarried()
+            await buildOwned()
+        }
+
+        /**
+         * Build multiple token actions
+         * @private
+         * @returns {object}
+         */
+        #buildMultipleTokenActions() {
+        }
+    }
+})

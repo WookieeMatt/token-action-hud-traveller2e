@@ -4,7 +4,10 @@
     "description": "Token Action HUD is a repositionable HUD of actions for a selected token",
     "authors": [
         {
-            "name": "WookieeChan"
+            "name": "WookieeChan",
+            "email": "mrimler1983@gmail.com",
+            "discord": "wookieechan",
+            "flags": {}
         },
         {
             "name": "Tárcis",

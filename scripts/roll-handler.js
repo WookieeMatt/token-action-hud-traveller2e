@@ -1,229 +1,160 @@
-export let RollHandler = null;
+export let RollHandler = null
 
 Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
-	/**
-	 * Extends Token Action HUD Core's RollHandler class and handles action events triggered when an action is clicked
-	 */
-	RollHandler = class RollHandler extends coreModule.api.RollHandler {
-		/**
-		 * Handle action event
-		 * Called by Token Action HUD Core when an action event is triggered
-		 * @override
-		 * @param {object} event        The event
-		 * @param {string} encodedValue The encoded value
-		 */
-		async handleActionClick(event, encodedValue) {
-			const payload = encodedValue.split('|');
+    /**
+     * Extends Token Action HUD Core's RollHandler class and handles action events triggered when an action is clicked
+     */
+    RollHandler = class RollHandler extends coreModule.api.RollHandler {
+        /**
+         * Handle action click
+         * Called by Token Action HUD Core when an action is left or right-clicked
+         * @override
+         * @param {object} event        The event
+         * @param {string} encodedValue The encoded value
+         */
+        async handleActionClick (event, encodedValue) {
+            const [actionTypeId, actionId] = encodedValue.split('|')
 
-			if (payload.length !== 2) {
-				super.throwInvalidValueErr();
-			}
+            const knownCharacters = ['agent']
 
-			const actionTypeId = payload[0];
-			const actionId = payload[1];
+            // If single actor is selected
+            if (this.actor) {
+                await this.#handleAction(this.actor, actionTypeId, actionId)
+                return
+            }
 
-			const renderable = [];
+            const controlledTokens = canvas.tokens.controlled
+                .filter((token) => knownCharacters.includes(token.actor?.type))
 
-			if (renderable.includes(actionTypeId) && this.isRenderItem()) {
-				return this.renderItem(this.actor, actionId);
-			}
+            // If multiple actors are selected
+            for (const token of controlledTokens) {
+                const actor = token.actor
+                await this.#handleAction(actor, actionTypeId, actionId)
+            }
+        }
 
-			const knownCharacters = ['player', 'monster'];
+        /**
+         * Handle action hover
+         * Called by Token Action HUD Core when an action is hovered on or off
+         * @override
+         * @param {object} event        The event
+         * @param {string} encodedValue The encoded value
+         */
+        async handleActionHover (event, encodedValue) { }
 
-			// If single actor is selected
-			if (this.actor) {
-				await this.#handleAction(event, this.actor, this.token, actionTypeId, actionId);
-				return;
-			}
+        /**
+         * Handle group click
+         * Called by Token Action HUD Core when a group is right-clicked while the HUD is locked
+         * @override
+         * @param {object} event The event
+         * @param {object} group The group
+         */
+        async handleGroupClick (event, group) { }
 
-			const controlledTokens = canvas.tokens.controlled.filter((token) => knownCharacters.includes(token.actor?.type));
+        /**
+         * Handle action
+         * @private
+         * @param {object} event        The event
+         * @param {object} actor        The actor
+         * @param {string} actionTypeId The action type id
+         * @param {string} actionId     The actionId
+         */
+        async #handleAction (actor, actionTypeId, actionId) {
+            switch (actionTypeId) {
+                case 'attributes':
+                    await this.#handleAttributessAction(actor, actionId)
+                    break
+                case 'skills':
+                    await this.#handleSkillsAction(actor, actionId)
+                    break
+                default:
+                    await this.#handleItemsAction(actor, actionId)
+                    break
+            }
+        }
 
-			// If multiple actors are selected
-			for (const token of controlledTokens) {
-				const actor = token.actor;
-				await this.#handleAction(event, actor, token, actionTypeId, actionId);
-			}
-		}
+        /**
+         * Handle Attribute action
+         * @private
+         * @param {object} actor    The actor
+         * @param {string} actionId The action id
+         */
+        async #handleAttributessAction (actor, actionId) {
+            let rollMod = 0
+            try {
+                rollMod = await foundry.applications.api.DialogV2.prompt({
+                    window: { title: coreModule.api.Utils.i18n('tokenActionHud.op.addBonus') },
+                    content: '<input name="mod" type="number" value="0" min="-5" max="5" step="1" autofocus>',
+                    ok: {
+                        label: coreModule.api.Utils.i18n('tokenActionHud.op.roll'),
+                        callback: (_event, button, _dialog) => button.form.elements.mod.valueAsNumber
+                    }
+                })
+            } catch {
+                rollMod = 0
+            }
 
-		/**
-		 * Handle action
-		 * @private
-		 * @param {object} event        The event
-		 * @param {object} actor        The actor
-		 * @param {object} token        The token
-		 * @param {string} actionTypeId The action type id
-		 * @param {string} actionId     The actionId
-		 */
-		async #handleAction(event, actor, token, actionTypeId, actionId) {
-			// switch (actor.type) {
-			// 	case 'player':
-			// 	case 'monster':
-			// 		{
-			// 			switch (actionTypeId) {
-			// 				// case "attributes":
-			// 				// 	await this.#handleAttributeAction(event, actor, actionId);
-			// 				// 	break;
-			// 				// case 'item':
-			// 				// 	{
-			// 				// 		const actorItem = actor.items.get(actionId);
-			// 				// 		if (actionId == game.traveller2e.config.noArmorID || actorItem.type == 'armor') {
-			// 				// 			return await this.#handleUArmorAction(event, actor, actionId, actorItem);
-			// 				// 		}
-			// 				// 		switch (actorItem.type) {
-			// 				// 			case 'weapon':
-			// 				// 				await this.#handleWeaponAction(event, actor, actionId, actorItem);
-			// 				// 				break;
-			// 				// 			default:
-			// 				// 				await this.renderItem(this.actor, actionId);
-			// 				// 				break;
-			// 				// 		}
-			// 				// 	}
-			// 				// 	break;
-			// 				// case "trait":
-			// 				// 	await this.#handleTraitAction(event, actor, actionId);
-			// 				// 	break;
-			// 				// case 'ability':
-			// 				// 	await this.#handleAbilityAction(event, actor, actionId);
-			// 				// 	break;
-			// 				// case 'mysticalpower':
-			// 				// 	await this.#handleMysticalPowerAction(event, actor, actionId);
-			// 				// 	break;
-			// 				// case 'toughness':
-			// 				// 	await this.#adjustAttribute(actor, 'toughness', 'value');
-			// 				// 	break;
-			// 				// case 'corruption':
-			// 				// 	await this.#adjustAttribute(actor, 'corruption', 'temporary');
-			// 				// 	break;
-			// 				default:
-			// 					await this.renderItem(this.actor, actionId);
-			// 					break;
-			// 			}
-			// 		}
-			// 		break;
-			// }
-		}
+            const attribute = actor.system.attributes[actionId]
+            const attributeName = coreModule.api.Utils.i18n(`op.att${actionId.replace(/^./, actionId[0].toUpperCase())}`)
+            let formula = `${attribute.value === 0 ? 2 : attribute.value}d20${attribute.value === 0 ? 'kl' : 'kh'}`
+            if (rollMod > 0) {
+                if (attribute.value === 0) {
+                    rollMod -= 1
+                    formula = `${rollMod}d20kh`
+                } else {
+                    const newMod = Number(formula.charAt(0)) + rollMod
+                    formula = `${newMod}${formula.slice(1)}`
+                }
+            } else if (rollMod < 0) {
+                if (attribute.value === 0) {
+                    const newMod = Number(formula.charAt(0)) - rollMod
+                    formula = `${newMod}${formula.slice(1)}`
+                } else {
+                    const currentMod = Number(formula.charAt(0))
+                    rollMod = -rollMod
+                    if (currentMod === 1) {
+                        rollMod += 1
+                    } else {
+                        rollMod -= currentMod - 1
+                    }
+                    formula = `${rollMod}d20kl`
+                }
+            }
 
-		// /**
-		//  * Handle Attribute action
-		//  * @private
-		//  * @param {object} event    The event
-		//  * @param {object} actor    The actor
-		//  * @param {string} actionId The action id
-		//  */
-		// async #handleAttributeAction(event, actor, actionId) {
-		// 	actor.rollAttribute(actionId);
-		// }
+            await new Roll(formula).toMessage({
+                speaker: ChatMessage.getSpeaker(),
+                flavor: `${coreModule.api.Utils.i18n('tokenActionHud.op.rolling')} ${attributeName}`
+            })
+        }
 
-		// /**
-		//  * Handle Trait action
-		//  * @private
-		//  * @param {object} event    The event
-		//  * @param {object} actor    The actor
-		//  * @param {string} actionId The action id
-		//  */
-		// async #handleTraitAction(event, actor, actionId) {
-		// 	let usedPower = actor.items.get(actionId);
-		// 	actor.usePower(usedPower);
-		// }
+        /**
+         * Handle Skill action
+         * @private
+         * @param {object} actor    The actor
+         * @param {string} actionId The action id
+         */
+        async #handleSkillsAction(actor, actionId) {
+            if (actionId === 'initiative' && actor.inCombat) {
+                await actor.rollInitiative()
+                return
+            }
 
-		// /**
-		//  * Handle Ability action
-		//  * @private
-		//  * @param {object} event    The event
-		//  * @param {object} actor    The actor
-		//  * @param {string} actionId The action id
-		//  */
-		// async #handleAbilityAction(event, actor, actionId) {
-		// 	let usedPower = actor.items.get(actionId);
-		// 	actor.usePower(usedPower);
-		// }
+            const rollData = actor.system.skills[actionId]
+            await new Roll(rollData.formula).toMessage({
+                speaker: ChatMessage.getSpeaker(),
+                flavor: `${coreModule.api.Utils.i18n('tokenActionHud.op.rolling')} ${rollData.label}`
+            })
+        }
 
-		// /**
-		//  * Handle Mystical Power action
-		//  * @private
-		//  * @param {object} event    The event
-		//  * @param {object} actor    The actor
-		//  * @param {string} actionId The action id
-		//  */
-		// async #handleMysticalPowerAction(event, actor, actionId) {
-		// 	let usedPower = actor.items.get(actionId);
-		// 	actor.usePower(usedPower);
-		// }
-
-		// /**
-		//  * Handle Armour action
-		//  * @private
-		//  * @param {object} event    The event
-		//  * @param {object} actor    The actor
-		//  * @param {string} actionId The action id
-		//  */
-		// async #handleUArmorAction(event, actor, actionId, actorItem) {
-		// 	actor.rollArmor();
-		// }
-
-		// /**
-		//  * Handle Weapon action
-		//  * @private
-		//  * @param {object} event    The event
-		//  * @param {object} actor    The actor
-		//  * @param {string} actionId The action id
-		//  */
-		// async #handleWeaponAction(event, actor, actionId, actorItem) {
-		// 	let usedItem = actor.system.weapons.filter((item) => item.id === actionId);
-		// 	actor.rollWeapon(usedItem[0]);
-		// }
-
-		// /**
-		//  * Handle Attribute action
-		//  * @private
-		//  * @param {object} event    The event
-		//  * @param {object} actor    The actor
-		//  * @param {string} actionId The action id
-		//  */
-		// async #adjustAttribute(actor, property, valueName) {
-		// 	console.log(actor, property, valueName);
-		// 	let value = actor.system.health[property][valueName];
-		// 	let max = actor.system.health[property].max;
-
-		// 	if (this.rightClick) {
-		// 		if (value <= 0) return;
-		// 		value--;
-		// 	} else {
-		// 		if (value >= max) return;
-		// 		value++;
-		// 	}
-
-		// 	let update = { system: { health: { [property]: { [valueName]: value } } } };
-
-		// 	await actor.update(update);
-		// }
-
-		/**
-		 * Handle item action
-		 * @private
-		 * @param {object} event    The event
-		 * @param {object} actor    The actor
-		 * @param {string} actionId The action id
-		 */
-		async #handleItemAction(event, actor, actionId) {
-			const item = actor.items.get(actionId);
-			item.toChat(event);
-		}
-
-		/**
-		 * Handle utility action
-		 * @private
-		 * @param {object} token    The token
-		 * @param {string} actionId The action id
-		 */
-		async #handleUtilityAction(token, actionId) {
-			switch (actionId) {
-				case 'endTurn':
-					if (game.combat?.current?.tokenId === token.id) {
-						await game.combat?.nextTurn();
-					}
-					break;
-			}
-		}
-	};
-});
+        /**
+         * Handle Item action
+         * @private
+         * @param {object} actor    The actor
+         * @param {string} actionId The action id
+         */
+        async #handleItemsAction(actor, actionId) {
+            const item = actor.items.get(actionId)
+            item.roll()
+        }
+    }
+})

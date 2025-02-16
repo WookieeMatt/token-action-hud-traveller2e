@@ -8,6 +8,14 @@
 				"hint": "Choose whether to display Inactive items on the HUD",
 				"name": "Display Inactive"
 			}
+		},
+		"traveller":{
+			"attributes": "Attributes",
+			"characteristics": "Characteristics",
+			"inUse": "In Use",
+			"carried": "Carried",
+			"owned": "Owned",
+			"utility": "Utility"
 		}
 	}
 }
