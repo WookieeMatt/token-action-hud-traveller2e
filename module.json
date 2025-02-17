@@ -1,77 +1,66 @@
 {
-    "id": "token-action-hud-traveller2e",
-    "title": "Token Action HUD for Mongoose Traveller2e",
-    "description": "Token Action HUD is a repositionable HUD of actions for a selected token",
-    "authors": [
-        {
-            "name": "WookieeChan",
-            "email": "mrimler1983@gmail.com",
-            "discord": "wookieechan",
-            "flags": {}
-        },
-        {
-            "name": "Tárcis",
-            "email": "tarcismoreda@gmail.com",
-            "discord": "tarcis_moreda",
-            "flags": {}
-        }
+  "id": "token-action-hud-traveller2e",
+  "title": "Token Action HUD for Mongoose Traveller2e",
+  "version": "1.0",
+  "compatibility": {
+    "minimum": "12",
+    "verified": "12"
+  },
+  "esmodules": [
+    "scripts/token-action-hud-t2e.min.js"
+  ],
+  "styles": [],
+  "relationships": {
+    "systems": [
+      {
+        "id": "mgt2e",
+        "type": "system",
+        "compatibility": [
+          {
+            "minimum": "0.11.6",
+            "verified": "1.0"
+          }
+        ]
+      }
     ],
-    "url": "https://github.com/WookieeMatt/token-action-hud-traveller2e",
-    "flags": {},
-    "version": "1.0",
-    "compatibility": {
-        "minimum": "12",
-        "verified": "12"
+    "requires": [
+      {
+        "id": "token-action-hud-core",
+        "type": "module",
+        "compatibility": [
+          {
+            "minimum": "2.0.2",
+            "maximum": "2",
+            "verified": "2"
+          }
+        ]
+      }
+    ]
+  },
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "languages/en.json"
+    }
+  ],
+  "description": "Token Action HUD is a repositionable HUD of actions for a selected token",
+  "authors": [
+    {
+      "name": "WookieeChan",
+      "email": "mrimler1983@gmail.com",
+      "discord": "wookieechan",
+      "flags": {}
     },
-    "esmodules": [
-        "./scripts/token-action-hud-t2e.min.js"
-    ],
-    "scripts": [],
-    "styles": [],
-    "languages": [
-        {
-            "lang": "en",
-            "name": "English",
-            "path": "languages/en.json"
-        }
-    ],
-    "packs": [],
-    "relationships": {
-        "systems": [
-            {
-                "id": "mgt2e",
-                "type": "system",
-                "compatibility": [
-                    {
-                        "minimum": "0.11.6",
-                        "verified": "1.0"
-                    }
-                ]
-            }
-        ],
-        "requires": [
-            {
-                "id": "token-action-hud-core",
-                "type": "module",
-                "compatibility": [
-                    {
-                        "minimum": "2.0.2",
-                        "maximum": "2",
-                        "verified": "2"
-                    }
-                ]
-            }
-        ],
-        "optional": [],
-        "flags": {
-            "optional": []
-        }
-    },
-    "socket": false,
-    "manifest": "https://github.com/WookieeMatt/token-action-hud-traveller2e/releases/download/1.0/module.zip",
-    "download": "https://github.com/WookieeMatt/token-action-hud-traveller2e/releases/download/1.0/module.json",
-    "readme": "https://github.com/WookieeMatt/token-action-hud-traveller2e/blob/main/readme.md",
-    "protected": false,
-    "coreTranslation": false,
-    "library": false
+    {
+      "name": "Tárcis",
+      "email": "tarcismoreda@gmail.com",
+      "discord": "tarcis_moreda",
+      "flags": {}
+    }
+  ],
+  "url": "https://github.com/WookieeMatt/token-action-hud-traveller2e",
+  "manifest": "https://github.com/WookieeMatt/token-action-hud-traveller2e/releases/download/1.0/module.json",
+  "download": "https://github.com/WookieeMatt/token-action-hud-traveller2e/releases/download/1.0/module.zip",
+  "readme": "https://github.com/WookieeMatt/token-action-hud-traveller2e/blob/main/readme.md"
 }
