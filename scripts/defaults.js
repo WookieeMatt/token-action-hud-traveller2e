@@ -13,6 +13,7 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
     })
 
     const groupsArray = Object.values(groups)
+    // This is the group hierarchy
     DEFAULTS = {
         layout: [
             {

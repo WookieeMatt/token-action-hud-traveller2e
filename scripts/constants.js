@@ -14,7 +14,6 @@ export const CORE_MODULE = {
 
 /**
  * Core module version required by the system module.
- * No longer used
  */
 export const REQUIRED_CORE_MODULE_VERSION = '2.0'
 
@@ -29,6 +28,7 @@ export const ACTION_TYPE = {
 
 /**
  * Groups
+ * All the groups and subgroups are declared here, whe declare the hierarchy in defaults.js
  */
 export const GROUP = {
     attributes: { id: 'attributes', name: 'tokenActionHud.traveller.attributes', type: 'system' },

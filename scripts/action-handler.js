@@ -14,12 +14,10 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
          * @override
          * @param {array} groupIds
          */
-        async buildSystemActions(groupIds) {
+        async buildSystemActions (groupIds) {
             // Set actor and token variables
             this.actors = (!this.actor) ? this._getActors() : [this.actor]
             this.actorType = this.actor?.type
-
-            this.displayUnequipped = Utils.getSetting('displayUnequipped')
 
             // Set items variable
             if (this.actor) {
@@ -28,31 +26,56 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
                 this.items = items
             }
 
-            if (this.actorType === 'traveller') {
-                this.#buildCharacterActions()
-            } else if (!this.actor) {
-                this.#buildMultipleTokenActions()
+            // Build which actions each actor type can take
+            switch (this.actorType) {
+            case 'traveller':
+            case 'npc':
+                this.#buildTravellerActions()
+                break
+            case 'creature':
+                this.#buildCreatureActions()
+                break
+            case 'package':
+                this.#buildPackageActions()
+                break
+            default:
+                break
             }
         }
 
-        /**
-         * Build character actions
-         * @private
-         */
-        #buildCharacterActions() {
+        #buildTravellerActions () {
             this.buildAttributes()
             this.buildAttacks()
             this.buildEquipment()
             this.buildUtility()
         }
 
-        async buildAttributes() {
+        #buildCreatureActions () {
+            this.buildAttributes()
+            this.buildAttacks()
+            this.buildUtility()
+        }
+
+        #buildPackageActions () {
+            this.buildAttributes()
+        }
+
+        /** All methods from here are building the actions
+         * It just takes info from the actor and formats it to
+         * fit the expected params for Token Action HUD
+         * The addActions method is called at the end of everyone
+         * of these, the method just maps the list of actions
+         * whe created to the respective group.
+        */
+
+        async buildAttributes () {
             const buildCharacteristics = async () => {
+                if (this.actorType === 'creature') { return }
+
                 const characteristics = []
 
                 for (const [id, characteristic] of Object.entries(this.actor.system.characteristics)) {
-                    if (!characteristic.show)
-                        continue
+                    if (!characteristic.show) { continue }
 
                     const characteristicName = coreModule.api.Utils.i18n(`MGT2.Characteristics.${id}`)
 
@@ -75,13 +98,12 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
             const buildSkills = async () => {
                 const skills = []
 
-                for (const [id, _] of Object.entries(this.actor.system.skills)) {
-                    if (id === 'untrained' && coreModule.api.Utils.i18n(`MGT2.Skills.${id}`) === 'Untrained')
-                        continue
+                for (const [id, skill] of Object.entries(this.actor.system.skills)) {
+                    if (id === 'untrained' && coreModule.api.Utils.i18n(`MGT2.Skills.${id}`) === 'Untrained') { continue }
+                    if (skill.trained === undefined) { continue }
 
                     let skillName = coreModule.api.Utils.i18n(`MGT2.Skills.${id}`)
-                    if (skillName === `MGT2.Skills.${id}`)
-                        skillName = id
+                    if (skillName === `MGT2.Skills.${id}`) { skillName = id }
 
                     // Add tooltip to skills
                     const tooltip = {
@@ -103,15 +125,13 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
             await buildSkills()
         }
 
-        async buildAttacks() {
+        async buildAttacks () {
             const attacks = []
 
             for (const [id, item] of this.items.entries()) {
                 const status = item.system.status
                 const type = item.type
-                if (status !== 'equipped' || type !== 'weapon') {
-                    continue
-                }
+                if ((status !== 'equipped' && this.actorType !== 'creature') || type !== 'weapon') { continue }
 
                 const tooltip = {
                     content: '' + item.name + '',
@@ -130,7 +150,7 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
             await this.addActions(attacks.sort((a, b) => a.name.localeCompare(b.name)), { id: 'attacks', type: 'system' })
         }
 
-        async buildEquipment() {
+        async buildEquipment () {
             const buildInUse = async () => {
                 const items = []
 
@@ -238,7 +258,7 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
          * @private
          * @returns {object}
          */
-        #buildMultipleTokenActions() {
+        #buildMultipleTokenActions () {
         }
     }
 })

@@ -42,12 +42,12 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
          * @returns {rollHandler}        The RollHandler instance
          */
         getRollHandler (rollHandlerId) {
-            let rollHandler;
+            let rollHandler
             switch (rollHandlerId) {
-                case 'core':
-                default:
-                    rollHandler = new Core()
-                    break
+            case 'core':
+            default:
+                rollHandler = new Core()
+                break
             }
             return rollHandler
         }
@@ -70,5 +70,5 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
         async registerDefaults () {
             return DEFAULTS
         }
-    };
-});
+    }
+})

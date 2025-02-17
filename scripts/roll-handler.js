@@ -12,10 +12,9 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
          * @param {object} event        The event
          * @param {string} encodedValue The encoded value
          */
-        async handleActionClick(event, encodedValue) {
+        async handleActionClick (event, encodedValue) {
             const [actionTypeId, actionId] = encodedValue.split('|')
-
-            const knownCharacters = ['traveller']
+            const knownCharacters = ['traveller', 'creature', 'npc']
 
             // If single actor is selected
             if (this.actor) {
@@ -40,7 +39,7 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
          * @param {object} event        The event
          * @param {string} encodedValue The encoded value
          */
-        async handleActionHover(event, encodedValue) { }
+        async handleActionHover (event, encodedValue) { }
 
         /**
          * Handle group click
@@ -49,7 +48,7 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
          * @param {object} event The event
          * @param {object} group The group
          */
-        async handleGroupClick(event, group) { }
+        async handleGroupClick (event, group) { }
 
         /**
          * Handle action
@@ -59,31 +58,39 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
          * @param {string} actionTypeId The action type id
          * @param {string} actionId     The actionId
          */
-        async #handleAction(event, actor, actionTypeId, actionId) {
+        async #handleAction (event, actor, actionTypeId, actionId) {
+            // Map action type to their respective callback
             switch (actionTypeId) {
-                case 'characteristics':
-                    await this.#handleCharacteristicsAction(event, actor, actionId);
-                    break
-                case 'skills':
-                    await this.#handleSkillsAction(event, actor, actionId)
-                    break
-                case 'attacks':
-                    this.#handleAttacksAction(actor, actionId)
-                    break
-                case 'inUse':
-                case 'carried':
-                case 'owned':
-                    await this.#handleEquipmentsAction(event, actor, actionId)
-                    break
-                case 'utility':
-                    await this.#handleUtilityAction(event, actor, actionId)
-                    break
-                default:
-                    break
+            case 'characteristics':
+                await this.#handleCharacteristicsAction(event, actor, actionId)
+                break
+            case 'skills':
+                await this.#handleSkillsAction(event, actor, actionId)
+                break
+            case 'attacks':
+                this.#handleAttacksAction(actor, actionId)
+                break
+            case 'inUse':
+            case 'carried':
+            case 'owned':
+                await this.#handleEquipmentsAction(event, actor, actionId)
+                break
+            case 'utility':
+                await this.#handleUtilityAction(event, actor, actionId)
+                break
+            default:
+                break
             }
         }
 
-        async #handleCharacteristicsAction(event, actor, actionId) {
+        /** All methods from here are the callbacks for the actions
+         * The action id refers to the item id in the handleAttackAction
+         * method, with it we recover the item from the actor and
+         * repackage the info so it's accepted by the system's roll function,
+         * all the other methods do the same in different ways.
+        */
+
+        async #handleCharacteristicsAction (event, actor, actionId) {
             const mockEvent = {
                 shiftKey: event.shiftKey,
                 ctrlKey: event.ctrlKey,
@@ -91,16 +98,16 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
                     dataset: {
                         cha: actionId,
                         label: actionId,
-                        roll: `2D6+@${actionId}`,
+                        roll: `2D6+@${actionId}`
                     }
                 },
                 preventDefault: () => { }
             }
 
-            actor.sheet._onRollWrapper(mockEvent, actor)
+            await actor.sheet._onRollWrapper(mockEvent, actor)
         }
 
-        async #handleSkillsAction(event, actor, actionId) {
+        async #handleSkillsAction (event, actor, actionId) {
             const skill = actor.system.skills[actionId]
             const label = `${skill.default} ${skill.trained ? '+' : '-'} '${skill.trained ? skill.value : -3}`
 
@@ -118,48 +125,47 @@ Hooks.once('tokenActionHudCoreApiReady', async (coreModule) => {
                 preventDefault: () => { }
             }
 
-            actor.sheet._onRollWrapper(mockEvent, actor)
+            await actor.sheet._onRollWrapper(mockEvent, actor)
         }
 
-        async #handleAttacksAction(actor, actionId) {
+        async #handleAttacksAction (actor, actionId) {
             const item = actor.items.get(actionId)
             await item.roll()
         }
 
-        async #handleEquipmentsAction(event, actor, actionId) {
+        async #handleEquipmentsAction (event, actor, actionId) {
             const item = actor.items.get(actionId)
-            let status = undefined
+            let status
 
-            switch (item.system.status) {
+            if (event.ctrlKey) {
+                switch (item.system.status) {
                 case 'equipped':
-                    if (event.button === 2)
-                        status = 'carried'
+                    if (event.button === 2) { status = 'carried' }
                     break
                 case 'carried':
-                    if (event.button === 0)
-                        status = 'equipped'
-                    else
-                        status = 'owned'
+                    if (event.button === 0) { status = 'equipped' } else { status = 'owned' }
                     break
                 case 'owned':
-                    if (event.button === 0)
-                        status = 'carried'
+                case null:
+                    if (event.button === 0) { status = 'carried' }
                     break
                 default:
                     break
-            }
+                }
 
-            if (status)
-                actor.sheet._setItemStatus(actor, item, status)
+                if (status) { await actor.sheet._setItemStatus(actor, item, status) }
+            } else {
+                await ChatMessage.create({ speaker: ChatMessage.getSpeaker(), flavor: item.name, content: item.system.description })
+            }
         }
 
-        async #handleUtilityAction(_event, actor, actionId) {
+        async #handleUtilityAction (_event, actor, actionId) {
             switch (actionId) {
-                case 'initiative':
-                    await actor.rollInitiative()
-                    break
-                default:
-                    break
+            case 'initiative':
+                await actor.rollInitiative()
+                break
+            default:
+                break
             }
         }
     }
