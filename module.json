@@ -16,9 +16,9 @@
             "flags": {}
         }
     ],
-    "url": "",
+    "url": "https://github.com/WookieeMatt/token-action-hud-traveller2e",
     "flags": {},
-    "version": "0.1",
+    "version": "1.0",
     "compatibility": {
         "minimum": "12",
         "verified": "12"
@@ -68,9 +68,9 @@
         }
     },
     "socket": false,
-    "manifest": "",
-    "download": "",
-    "readme": "",
+    "manifest": "https://github.com/WookieeMatt/token-action-hud-traveller2e/releases/download/1.0/module.zip",
+    "download": "https://github.com/WookieeMatt/token-action-hud-traveller2e/releases/download/1.0/module.json",
+    "readme": "https://github.com/WookieeMatt/token-action-hud-traveller2e/blob/main/readme.md",
     "protected": false,
     "coreTranslation": false,
     "library": false
